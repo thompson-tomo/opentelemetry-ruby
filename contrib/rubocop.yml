@@ -39,6 +39,10 @@ Style/ModuleFunction:
   Enabled: false
 Style/NumericPredicate:
   Enabled: false
+Style/RedundantConstantBase:
+  Enabled: false
+Style/RedundantRegexpEscape:
+  Enabled: false
 Style/StringConcatenation:
   Exclude:
     - "test/**/*"
