@@ -10,6 +10,8 @@ Style/ExplicitBlockArgument:
   Enabled: false
 Lint/AmbiguousOperatorPrecedence:
   Enabled: false
+Lint/EmptyClass:
+  Enabled: false
 Minitest/UselessAssertion:
   Enabled: false
 Naming/BlockForwarding:
@@ -19,6 +21,8 @@ Naming/PredicateMethod:
 Style/ArgumentsForwarding:
   Enabled: false
 Style/EmptyClassDefinition:
+  Enabled: false
+Style/HashConversion:
   Enabled: false
 Style/NegatedIfElseCondition:
   Enabled: false
