@@ -16,3 +16,7 @@ Metrics/BlockLength:
 Naming/FileName:
   Exclude:
     - "lib/opentelemetry-common.rb"
+Lint/AmbiguousRange:
+Minitest/AssertPredicate:
+Minitest/RefutePredicate:
+Performance/MethodObjectAsBlock:
