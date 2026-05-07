@@ -7,7 +7,7 @@ plugins:
 AllCops:
   NewCops: enable
   SuggestExtensions: true
-  TargetRubyVersion: "3.1"
+  TargetRubyVersion: "3.3"
   Exclude:
     - "vendor/**/*"
 
