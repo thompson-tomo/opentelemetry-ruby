@@ -40,14 +40,11 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'opentelemetry-exporter-zipkin', '~> 0.19'
   spec.add_development_dependency 'opentelemetry-instrumentation-base', '~> 0.20'
   spec.add_development_dependency 'opentelemetry-test-helpers'
-  spec.add_development_dependency 'pry'
   spec.add_development_dependency 'rake', '~> 13.3'
   spec.add_development_dependency 'rubocop', '~> 1.65'
   spec.add_development_dependency 'simplecov', '~> 0.17'
   spec.add_development_dependency 'yard', '~> 0.9'
   spec.add_development_dependency 'yard-doctest', '~> 0.1.6'
-
-  spec.add_development_dependency 'pry-byebug' unless RUBY_ENGINE == 'jruby'
 
   if spec.respond_to?(:metadata)
     spec.metadata['changelog_uri'] = "https://open-telemetry.github.io/opentelemetry-ruby/opentelemetry-sdk/v#{OpenTelemetry::SDK::VERSION}/file.CHANGELOG.html"
