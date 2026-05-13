@@ -1,5 +1,10 @@
 # Release History: opentelemetry-sdk
 
+### v1.12.0 / 2026-05-12
+
+* ADDED: Add git tag to source URI in gemspec (#2101)
+* FIXED: Consistent labels for otel.bsp.dropped_spans metric (#2108)
+
 ### v1.11.0 / 2026-04-07
 
 * ADDED: Min Ruby Version 3.3 (#2070)
