@@ -69,15 +69,14 @@ ignoreWords:
   - codegen
   - Dockerfiles
 words:
+  - autocorrection
+  - bigdecimal
+  - configurator
+  - confluentinc
+  - linkspector
+  - loggregator
   - LOGRECORD
+  - SARIF
+  - semconv
   - traceid
   - tracestate
-  - loggregator
-  - configurator
-
-  - autocorrection
-
-  - linkspector
-  - SARIF
-  - bigdecimal
-  - confluentinc
