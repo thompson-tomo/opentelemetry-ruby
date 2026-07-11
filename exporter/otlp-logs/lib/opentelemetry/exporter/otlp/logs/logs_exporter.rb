@@ -67,13 +67,7 @@ module OpenTelemetry
                    else
                      URI(endpoint)
                    end
-
-            @http = http_connection(@uri, ssl_verify_mode, certificate_file, client_certificate_file, client_key_file)
-
-            @path = @uri.path
-            @headers = prepare_headers(headers)
-            @timeout = timeout.to_f
-            @compression = compression
+            @client = OpenTelemetry::Exporter::OTLP::HTTP::Common::OTLPClient.new(uri, 'log', certificate_file, client_certificate_file, client_key_file, headers, compression, timeout)
             @shutdown = false
           end
 
@@ -88,7 +82,8 @@ module OpenTelemetry
             OpenTelemetry.logger.error('Logs Exporter tried to export, but it has already shut down') if @shutdown
             return FAILURE if @shutdown
 
-            send_bytes(encode(log_record_data), timeout: timeout)
+            result = @client.send_bytes(encode(log_record_data), timeout: timeout)
+            log_status(result.response.body) if result.response?.body
           end
 
           # Called when {OpenTelemetry::SDK::Logs::LoggerProvider#force_flush} is called, if
@@ -107,7 +102,7 @@ module OpenTelemetry
           # @param [optional Numeric] timeout An optional timeout in seconds.
           def shutdown(timeout: nil)
             @shutdown = true
-            @http.finish if @http.started?
+            @client.finish if @client.started?
             SUCCESS
           end
 
