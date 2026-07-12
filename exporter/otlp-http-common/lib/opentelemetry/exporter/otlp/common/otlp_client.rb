@@ -5,10 +5,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 require 'opentelemetry/common'
-require 'opentelemetry/exporter/otlp_common'
-require 'opentelemetry/sdk'
-require 'opentelemetry-logs-api' # the sdk isn't loading the api, but not sure why
-require 'opentelemetry/sdk/logs'
 require 'net/http'
 require 'zlib'
 

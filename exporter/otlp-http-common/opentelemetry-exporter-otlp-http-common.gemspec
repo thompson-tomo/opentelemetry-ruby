@@ -25,14 +25,8 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
   spec.required_ruby_version = '>= 3.3'
 
-  spec.add_dependency 'googleapis-common-protos-types', '~> 1.3'
   spec.add_dependency 'google-protobuf', '>= 3.18'
-  spec.add_dependency 'opentelemetry-api', '~> 1.1'
   spec.add_dependency 'opentelemetry-common', '~> 0.20'
-  spec.add_dependency 'opentelemetry-logs-api', '~> 0.1'
-  spec.add_dependency 'opentelemetry-logs-sdk', '~> 0.1'
-  spec.add_dependency 'opentelemetry-sdk'
-  spec.add_dependency 'opentelemetry-semantic_conventions'
 
   if spec.respond_to?(:metadata)
     spec.metadata['changelog_uri'] = "https://rubydoc.info/gems/#{spec.name}/#{spec.version}/file/CHANGELOG.md"
