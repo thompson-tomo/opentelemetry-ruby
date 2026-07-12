@@ -15,7 +15,7 @@ if RUBY_ENGINE == 'ruby'
 end
 
 require 'opentelemetry-test-helpers'
-require 'opentelemetry/exporter/otlp_logs'
+require 'opentelemetry/exporter/otlp_common'
 require 'minitest/autorun'
 require 'webmock/minitest'
 require 'minitest/stub_const'

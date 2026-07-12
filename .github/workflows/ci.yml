@@ -69,7 +69,6 @@ jobs:
           ruby: "truffleruby"
 
   exporters:
-    if: ${{ github.repository == 'open-telemetry/opentelemetry-ruby' }}
     strategy:
       fail-fast: false
       matrix:
@@ -78,6 +77,7 @@ jobs:
           - opentelemetry-exporter-otlp-common
           - opentelemetry-exporter-otlp-grpc
           - opentelemetry-exporter-otlp-http
+          - opentelemetry-exporter-otlp-http-common
           - opentelemetry-exporter-zipkin
           - opentelemetry-exporter-otlp-logs
           - opentelemetry-exporter-otlp-metrics

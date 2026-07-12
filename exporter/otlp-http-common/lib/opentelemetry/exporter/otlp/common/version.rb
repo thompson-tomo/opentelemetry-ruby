@@ -7,7 +7,7 @@
 module OpenTelemetry
   module Exporter
     module OTLP
-      module Logs
+      module Common
         ## Current OpenTelemetry OTLP logs exporter version
         VERSION = '0.5.1'
       end

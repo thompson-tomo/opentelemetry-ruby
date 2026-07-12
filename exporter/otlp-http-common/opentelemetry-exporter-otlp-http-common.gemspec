@@ -6,11 +6,11 @@
 
 lib = File.expand_path('lib', __dir__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'opentelemetry/exporter/otlp/logs/version'
+require 'opentelemetry/exporter/otlp/common/version'
 
 Gem::Specification.new do |spec|
-  spec.name        = 'opentelemetry-exporter-otlp-logs'
-  spec.version     = OpenTelemetry::Exporter::OTLP::Logs::VERSION
+  spec.name        = 'opentelemetry-exporter-otlp-http-common'
+  spec.version     = OpenTelemetry::Exporter::OTLP::Common::VERSION
   spec.authors     = ['OpenTelemetry Authors']
   spec.email       = ['cncf-opentelemetry-contributors@lists.cncf.io']
 

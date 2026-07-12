@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 require 'opentelemetry/common'
+require 'opentelemetry/exporter/otlp_common'
 require 'opentelemetry/sdk'
 require 'net/http'
 require 'zlib'
@@ -31,27 +32,11 @@ module OpenTelemetry
 
           attr_reader :metric_snapshots
 
-          SUCCESS = OpenTelemetry::SDK::Metrics::Export::SUCCESS
-          FAILURE = OpenTelemetry::SDK::Metrics::Export::FAILURE
-          private_constant(:SUCCESS, :FAILURE)
-
-          # rubocop:disable Lint/DuplicateBranch
-          def self.ssl_verify_mode
-            if ENV.key?('OTEL_RUBY_EXPORTER_OTLP_SSL_VERIFY_PEER')
-              OpenSSL::SSL::VERIFY_PEER
-            elsif ENV.key?('OTEL_RUBY_EXPORTER_OTLP_SSL_VERIFY_NONE')
-              OpenSSL::SSL::VERIFY_NONE
-            else
-              OpenSSL::SSL::VERIFY_PEER
-            end
-          end
-          # rubocop:enable Lint/DuplicateBranch
-
           def initialize(endpoint: OpenTelemetry::Common::Utilities.config_opt('OTEL_EXPORTER_OTLP_METRICS_ENDPOINT', 'OTEL_EXPORTER_OTLP_ENDPOINT', default: 'http://localhost:4318/v1/metrics'),
                          certificate_file: OpenTelemetry::Common::Utilities.config_opt('OTEL_EXPORTER_OTLP_METRICS_CERTIFICATE', 'OTEL_EXPORTER_OTLP_CERTIFICATE'),
                          client_certificate_file: OpenTelemetry::Common::Utilities.config_opt('OTEL_EXPORTER_OTLP_METRICS_CLIENT_CERTIFICATE', 'OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE'),
                          client_key_file: OpenTelemetry::Common::Utilities.config_opt('OTEL_EXPORTER_OTLP_METRICS_CLIENT_KEY', 'OTEL_EXPORTER_OTLP_CLIENT_KEY'),
-                         ssl_verify_mode: MetricsExporter.ssl_verify_mode,
+                         ssl_verify_mode: nil,
                          headers: OpenTelemetry::Common::Utilities.config_opt('OTEL_EXPORTER_OTLP_METRICS_HEADERS', 'OTEL_EXPORTER_OTLP_HEADERS', default: {}),
                          compression: OpenTelemetry::Common::Utilities.config_opt('OTEL_EXPORTER_OTLP_METRICS_COMPRESSION', 'OTEL_EXPORTER_OTLP_COMPRESSION', default: 'gzip'),
                          timeout: OpenTelemetry::Common::Utilities.config_opt('OTEL_EXPORTER_OTLP_METRICS_TIMEOUT', 'OTEL_EXPORTER_OTLP_TIMEOUT', default: 10),
@@ -69,10 +54,11 @@ module OpenTelemetry
                      URI(endpoint)
                    end
 
-            @http = http_connection(@uri, ssl_verify_mode, certificate_file, client_certificate_file, client_key_file)
+            @client = OpenTelemetry::Exporter::OTLP::Common::OTLPClient.new(uri: @uri, type: 'metrics', useragent: DEFAULT_USER_AGENT, certificate_file: certificate_file, client_certificate_file: client_certificate_file, client_key_file: client_key_file, ssl_verify_mode: ssl_verify_mode, headers: headers, compression: compression, timeout: timeout)
+            @http = @client.instance_variable_get(:@http)
 
             @path = @uri.path
-            @headers = prepare_headers(headers)
+            @headers = headers
             @timeout = timeout.to_f
             @compression = compression
             @mutex = Mutex.new
@@ -89,102 +75,10 @@ module OpenTelemetry
           # metrics Array[MetricData]
           def export(metrics, timeout: nil)
             @mutex.synchronize do
-              send_bytes(encode(metrics), timeout: timeout)
+              result = @client.send_bytes(encode(metrics), timeout: timeout)
+              log_status(result.response.body) unless result.response.nil?
+              result.success ? OpenTelemetry::SDK::Metrics::Export::SUCCESS : OpenTelemetry::SDK::Metrics::Export::FAILURE
             end
-          end
-
-          def send_bytes(bytes, timeout:)
-            return FAILURE if bytes.nil?
-
-            request = Net::HTTP::Post.new(@path)
-
-            if @compression == 'gzip'
-              request.add_field('Content-Encoding', 'gzip')
-              body = Zlib.gzip(bytes)
-            else
-              body = bytes
-            end
-
-            request.body = body
-            request.add_field('Content-Type', 'application/x-protobuf')
-            @headers.each { |key, value| request.add_field(key, value) }
-
-            retry_count = 0
-            timeout ||= @timeout
-            start_time = OpenTelemetry::Common::Utilities.timeout_timestamp
-
-            around_request do
-              remaining_timeout = OpenTelemetry::Common::Utilities.maybe_timeout(timeout, start_time)
-              return FAILURE if remaining_timeout.zero?
-
-              @http.open_timeout = remaining_timeout
-              @http.read_timeout = remaining_timeout
-              @http.write_timeout = remaining_timeout
-              @http.start unless @http.started?
-              response = @http.request(request)
-              case response
-              when Net::HTTPSuccess
-                response.body # Read and discard body
-                SUCCESS
-              when Net::HTTPServiceUnavailable, Net::HTTPTooManyRequests
-                response.body # Read and discard body
-                redo if backoff?(retry_after: response['Retry-After'], retry_count: retry_count += 1, reason: response.code)
-                OpenTelemetry.logger.warn('Net::HTTPServiceUnavailable/Net::HTTPTooManyRequests in MetricsExporter#send_bytes')
-                FAILURE
-              when Net::HTTPRequestTimeOut, Net::HTTPGatewayTimeOut, Net::HTTPBadGateway
-                response.body # Read and discard body
-                redo if backoff?(retry_count: retry_count += 1, reason: response.code)
-                OpenTelemetry.logger.warn('Net::HTTPRequestTimeOut/Net::HTTPGatewayTimeOut/Net::HTTPBadGateway in MetricsExporter#send_bytes')
-                FAILURE
-              when Net::HTTPNotFound
-                OpenTelemetry.handle_error(message: "OTLP metrics_exporter received http.code=404 for uri: '#{@path}'")
-                FAILURE
-              when Net::HTTPBadRequest, Net::HTTPClientError, Net::HTTPServerError
-                log_status(response.body)
-                OpenTelemetry.logger.warn('Net::HTTPBadRequest/Net::HTTPClientError/Net::HTTPServerError in MetricsExporter#send_bytes')
-                FAILURE
-              when Net::HTTPRedirection
-                @http.finish
-                handle_redirect(response['location'])
-                redo if backoff?(retry_after: 0, retry_count: retry_count += 1, reason: response.code)
-              else
-                @http.finish
-                OpenTelemetry.logger.warn("Unexpected error in OTLP::MetricsExporter#send_bytes - #{response.message}")
-                FAILURE
-              end
-            rescue Net::OpenTimeout, Net::ReadTimeout
-              retry if backoff?(retry_count: retry_count += 1, reason: 'timeout')
-              OpenTelemetry.logger.warn('Net::OpenTimeout/Net::ReadTimeout in MetricsExporter#send_bytes')
-              return FAILURE
-            rescue OpenSSL::SSL::SSLError
-              retry if backoff?(retry_count: retry_count += 1, reason: 'openssl_error')
-              OpenTelemetry.logger.warn('OpenSSL::SSL::SSLError in MetricsExporter#send_bytes')
-              return FAILURE
-            rescue SocketError
-              retry if backoff?(retry_count: retry_count += 1, reason: 'socket_error')
-              OpenTelemetry.logger.warn('SocketError in MetricsExporter#send_bytes')
-              return FAILURE
-            rescue SystemCallError => e
-              retry if backoff?(retry_count: retry_count += 1, reason: e.class.name)
-              OpenTelemetry.logger.warn('SystemCallError in MetricsExporter#send_bytes')
-              return FAILURE
-            rescue EOFError
-              retry if backoff?(retry_count: retry_count += 1, reason: 'eof_error')
-              OpenTelemetry.logger.warn('EOFError in MetricsExporter#send_bytes')
-              return FAILURE
-            rescue Zlib::DataError
-              retry if backoff?(retry_count: retry_count += 1, reason: 'zlib_error')
-              OpenTelemetry.logger.warn('Zlib::DataError in MetricsExporter#send_bytes')
-              return FAILURE
-            rescue StandardError => e
-              OpenTelemetry.handle_error(exception: e, message: 'unexpected error in OTLP::MetricsExporter#send_bytes')
-              return FAILURE
-            end
-          ensure
-            # Reset timeouts to defaults for the next call.
-            @http.open_timeout = @timeout
-            @http.read_timeout = @timeout
-            @http.write_timeout = @timeout
           end
 
           def encode(metrics_data)
@@ -376,16 +270,16 @@ module OpenTelemetry
 
           # may not need this
           def reset
-            SUCCESS
+            OpenTelemetry::SDK::Metrics::Export::SUCCESS
           end
 
           def force_flush(timeout: nil)
-            SUCCESS
+            OpenTelemetry::SDK::Metrics::Export::SUCCESS
           end
 
           def shutdown(timeout: nil)
             @shutdown = true
-            SUCCESS
+            OpenTelemetry::SDK::Metrics::Export::SUCCESS
           end
         end
       end
