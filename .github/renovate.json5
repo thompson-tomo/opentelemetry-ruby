@@ -32,6 +32,8 @@
       matchDepNames: ["ruby"],
       matchUpdateTypes: ["digest", "patch"],
       matchFileNames: [
+        ".github/workflows/ci-checks-local.yml",
+        ".github/workflows/ci-markdown-checks.yml",
         "**/*.gemspec",
         "Dockerfile",
         "examples/**/Dockerfile",
