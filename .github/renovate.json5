@@ -28,9 +28,41 @@
       schedule: ["before 6am every weekday"],
     },
     {
+      groupName: "Min-Ruby-sdk [Patches]",
+      matchDepNames: ["ruby"],
+      matchUpdateTypes: ["digest", "patch"],
+      matchFileNames: [
+        "**/*.gemspec",
+        "Dockerfile",
+        "examples/**/Dockerfile",
+        "**/examples/Dockerfile",
+      ],
+      schedule: ["before 6am every weekday"],
+    },
+    {
+      groupName: "Latest-Ruby-sdk [Patches]",
       matchDepNames: ["ruby"],
       matchUpdateTypes: ["digest", "patch"],
       schedule: ["before 6am every weekday"],
+    },
+    {
+      groupName: "Min-Ruby-sdk [Patches]"
+      matchDepNames: ["ruby/setup-ruby"],
+      matchFileNames: [
+        ".github/workflows/ci-checks-local.yml",
+        ".github/workflows/ci-markdown-checks.yml",
+      ],
+      schedule: ["before 7am 4 weeks on Monday"],
+    },
+    {
+      groupName: "Latest-Ruby-sdk [Patches]"
+      matchDepNames: ["ruby/setup-ruby"],
+      matchFileNames: [
+        ".github/workflows/fossa.yml",
+        ".github/workflows/installation-tests.yml",
+        ".github/workflows/release-*.yml",
+      ],
+      schedule: ["before 7am 4 weeks on Monday"],
     },
     {
       description: "Separate ruby updates so that patches can be installed after new minor has been released.",
@@ -64,12 +96,6 @@
     {
       matchUpdateTypes: ["major"],
       schedule: ["before 8am on Monday"],
-    },
-    {
-      matchDepNames: ["actions/setup-node", "ruby/setup-ruby"],
-      schedule: ["before 6am every weekday"],
-      prConcurrentLimit: 0,
-      automerge: true,
     },
     {
       description: "Require non-general dependencies in gemspec files to be approved",
