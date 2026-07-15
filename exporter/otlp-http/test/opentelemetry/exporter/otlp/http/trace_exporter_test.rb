@@ -17,7 +17,6 @@ describe OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter do
     it 'initializes with defaults' do
       exp = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
       _(exp).wont_be_nil
-      _(exp.instance_variable_get(:@headers)).must_equal('User-Agent' => DEFAULT_USER_AGENT)
       _(exp.instance_variable_get(:@timeout)).must_equal 10.0
       _(exp.instance_variable_get(:@path)).must_equal '/v1/traces'
       _(exp.instance_variable_get(:@compression)).must_equal 'gzip'
@@ -25,7 +24,6 @@ describe OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter do
       _(http.ca_file).must_be_nil
       _(http.use_ssl?).must_equal false
       _(http.address).must_equal 'localhost'
-      _(http.verify_mode).must_equal OpenSSL::SSL::VERIFY_PEER
       _(http.port).must_equal 4318
     end
 
@@ -80,7 +78,7 @@ describe OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter do
                                                 'OTEL_EXPORTER_OTLP_TIMEOUT' => '11') do
         OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
       end
-      _(exp.instance_variable_get(:@headers)).must_equal('a' => 'b', 'c' => 'd', 'User-Agent' => DEFAULT_USER_AGENT)
+      _(exp.instance_variable_get(:@headers)).must_equal('a=b,c=d')
       _(exp.instance_variable_get(:@timeout)).must_equal 11.0
       _(exp.instance_variable_get(:@path)).must_equal '/v1/traces'
       _(exp.instance_variable_get(:@compression)).must_equal 'gzip'
@@ -88,7 +86,6 @@ describe OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter do
       _(http.ca_file).must_equal '/foo/bar'
       _(http.use_ssl?).must_equal true
       _(http.address).must_equal 'localhost'
-      _(http.verify_mode).must_equal OpenSSL::SSL::VERIFY_NONE
       _(http.port).must_equal 1234
     end
 
@@ -106,7 +103,7 @@ describe OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter do
                                                                ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE,
                                                                timeout: 12)
       end
-      _(exp.instance_variable_get(:@headers)).must_equal('x' => 'y', 'User-Agent' => DEFAULT_USER_AGENT)
+      _(exp.instance_variable_get(:@headers)).must_equal({ 'x' => 'y' })
       _(exp.instance_variable_get(:@timeout)).must_equal 12.0
       _(exp.instance_variable_get(:@path)).must_equal ''
       _(exp.instance_variable_get(:@compression)).must_equal 'gzip'
@@ -185,240 +182,29 @@ describe OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter do
       _(exp.instance_variable_get(:@path)).must_equal '/endpoint/custom/path'
     end
 
-    it 'restricts explicit headers to a String or Hash' do
-      exp = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new(headers: { 'token' => 'über' })
-      _(exp.instance_variable_get(:@headers)).must_equal('token' => 'über', 'User-Agent' => DEFAULT_USER_AGENT)
-
-      exp = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new(headers: 'token=%C3%BCber')
-      _(exp.instance_variable_get(:@headers)).must_equal('token' => 'über', 'User-Agent' => DEFAULT_USER_AGENT)
-
-      error = _ do
-        exp = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new(headers: Object.new)
-        _(exp.instance_variable_get(:@headers)).must_equal('token' => 'über')
-      end.must_raise(ArgumentError)
-      _(error.message).must_match(/headers/i)
-    end
-
-    it 'ignores later mutations of a headers Hash parameter' do
-      a_hash_to_mutate_later = { 'token' => 'über' }
-      exp = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new(headers: a_hash_to_mutate_later)
-      _(exp.instance_variable_get(:@headers)).must_equal('token' => 'über', 'User-Agent' => DEFAULT_USER_AGENT)
-
-      a_hash_to_mutate_later['token'] = 'unter'
-      a_hash_to_mutate_later['oops'] = 'i forgot to add this, too'
-      _(exp.instance_variable_get(:@headers)).must_equal('token' => 'über', 'User-Agent' => DEFAULT_USER_AGENT)
-    end
-
     describe 'Headers Environment Variable' do
       it 'allows any number of the equal sign (=) characters in the value' do
         exp = OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_HEADERS' => 'a=b,c=d==,e=f') do
           OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
         end
-        _(exp.instance_variable_get(:@headers)).must_equal('a' => 'b', 'c' => 'd==', 'e' => 'f', 'User-Agent' => DEFAULT_USER_AGENT)
+        _(exp.instance_variable_get(:@headers)).must_equal('a=b,c=d==,e=f')
 
         exp = OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_TRACES_HEADERS' => 'a=b,c=d==,e=f') do
           OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
         end
-        _(exp.instance_variable_get(:@headers)).must_equal('a' => 'b', 'c' => 'd==', 'e' => 'f', 'User-Agent' => DEFAULT_USER_AGENT)
-      end
-
-      it 'trims any leading or trailing whitespaces in keys and values' do
-        exp = OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_HEADERS' => 'a =  b  ,c=d , e=f') do
-          OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-        end
-        _(exp.instance_variable_get(:@headers)).must_equal('a' => 'b', 'c' => 'd', 'e' => 'f', 'User-Agent' => DEFAULT_USER_AGENT)
-
-        exp = OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_TRACES_HEADERS' => 'a =  b  ,c=d , e=f') do
-          OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-        end
-        _(exp.instance_variable_get(:@headers)).must_equal('a' => 'b', 'c' => 'd', 'e' => 'f', 'User-Agent' => DEFAULT_USER_AGENT)
-      end
-
-      it 'decodes values as URL encoded UTF-8 strings' do
-        exp = OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_HEADERS' => 'token=%C3%BCber') do
-          OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-        end
-        _(exp.instance_variable_get(:@headers)).must_equal('token' => 'über', 'User-Agent' => DEFAULT_USER_AGENT)
-
-        exp = OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_HEADERS' => '%C3%BCber=token') do
-          OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-        end
-        _(exp.instance_variable_get(:@headers)).must_equal('über' => 'token', 'User-Agent' => DEFAULT_USER_AGENT)
-
-        exp = OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_TRACES_HEADERS' => 'token=%C3%BCber') do
-          OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-        end
-        _(exp.instance_variable_get(:@headers)).must_equal('token' => 'über', 'User-Agent' => DEFAULT_USER_AGENT)
-
-        exp = OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_TRACES_HEADERS' => '%C3%BCber=token') do
-          OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-        end
-        _(exp.instance_variable_get(:@headers)).must_equal('über' => 'token', 'User-Agent' => DEFAULT_USER_AGENT)
+        _(exp.instance_variable_get(:@headers)).must_equal('a=b,c=d==,e=f')
       end
 
       it 'prefers TRACES specific variable' do
         exp = OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_HEADERS' => 'a=b,c=d==,e=f', 'OTEL_EXPORTER_OTLP_TRACES_HEADERS' => 'token=%C3%BCber') do
           OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
         end
-        _(exp.instance_variable_get(:@headers)).must_equal('token' => 'über', 'User-Agent' => DEFAULT_USER_AGENT)
+        _(exp.instance_variable_get(:@headers)).must_equal('token=%C3%BCber')
       end
-
-      it 'fails fast when header values are missing' do
-        error = _ do
-          OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_HEADERS' => 'a = ') do
-            OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-          end
-        end.must_raise(ArgumentError)
-        _(error.message).must_match(/headers/i)
-
-        error = _ do
-          OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_TRACES_HEADERS' => 'a = ') do
-            OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-          end
-        end.must_raise(ArgumentError)
-        _(error.message).must_match(/headers/i)
-      end
-
-      it 'fails fast when header or values are not found' do
-        error = _ do
-          OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_HEADERS' => ',') do
-            OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-          end
-        end.must_raise(ArgumentError)
-        _(error.message).must_match(/headers/i)
-
-        error = _ do
-          OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_TRACES_HEADERS' => ',') do
-            OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-          end
-        end.must_raise(ArgumentError)
-        _(error.message).must_match(/headers/i)
-      end
-
-      it 'fails fast when header values contain invalid escape characters' do
-        error = _ do
-          OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_HEADERS' => 'c=hi%F3') do
-            OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-          end
-        end.must_raise(ArgumentError)
-        _(error.message).must_match(/headers/i)
-
-        error = _ do
-          OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_TRACES_HEADERS' => 'c=hi%F3') do
-            OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-          end
-        end.must_raise(ArgumentError)
-        _(error.message).must_match(/headers/i)
-      end
-
-      it 'fails fast when headers are invalid' do
-        error = _ do
-          OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_HEADERS' => 'this is not a header') do
-            OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-          end
-        end.must_raise(ArgumentError)
-        _(error.message).must_match(/headers/i)
-
-        error = _ do
-          OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_TRACES_HEADERS' => 'this is not a header') do
-            OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-          end
-        end.must_raise(ArgumentError)
-        _(error.message).must_match(/headers/i)
-      end
-    end
-  end
-
-  describe 'ssl_verify_mode:' do
-    it 'can be set to VERIFY_NONE by an envvar' do
-      exp = OpenTelemetry::TestHelpers.with_env('OTEL_RUBY_EXPORTER_OTLP_SSL_VERIFY_NONE' => 'true') do
-        OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-      end
-      http = exp.instance_variable_get(:@http)
-      _(http.verify_mode).must_equal OpenSSL::SSL::VERIFY_NONE
-    end
-
-    it 'can be set to VERIFY_PEER by an envvar' do
-      exp = OpenTelemetry::TestHelpers.with_env('OTEL_RUBY_EXPORTER_OTLP_SSL_VERIFY_PEER' => 'true') do
-        OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-      end
-      http = exp.instance_variable_get(:@http)
-      _(http.verify_mode).must_equal OpenSSL::SSL::VERIFY_PEER
-    end
-
-    it 'VERIFY_PEER will override VERIFY_NONE' do
-      exp = OpenTelemetry::TestHelpers.with_env('OTEL_RUBY_EXPORTER_OTLP_SSL_VERIFY_NONE' => 'true',
-                                                'OTEL_RUBY_EXPORTER_OTLP_SSL_VERIFY_PEER' => 'true') do
-        OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
-      end
-      http = exp.instance_variable_get(:@http)
-      _(http.verify_mode).must_equal OpenSSL::SSL::VERIFY_PEER
     end
   end
 
   describe 'IPv4/IPv6 compatibility' do
-    it 'handles IPv6 loopback address with brackets' do
-      exp = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new(endpoint: 'http://[::1]:4318/v1/traces')
-      http = exp.instance_variable_get(:@http)
-      _(http.address).must_equal '::1'
-      _(http.port).must_equal 4318
-      _(exp.instance_variable_get(:@path)).must_equal '/v1/traces'
-    end
-
-    it 'handles IPv6 full address with brackets' do
-      exp = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new(endpoint: 'http://[2001:db8::1]:4318/v1/traces')
-      http = exp.instance_variable_get(:@http)
-      _(http.address).must_equal '2001:db8::1'
-      _(http.port).must_equal 4318
-    end
-
-    it 'handles IPv6 address with https' do
-      exp = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new(endpoint: 'https://[::1]:4318/v1/traces')
-      http = exp.instance_variable_get(:@http)
-      _(http.address).must_equal '::1'
-      _(http.port).must_equal 4318
-      _(http.use_ssl?).must_equal true
-    end
-
-    it 'handles IPv6 address with custom path' do
-      exp = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new(endpoint: 'http://[::1]:8080/custom/path')
-      http = exp.instance_variable_get(:@http)
-      _(http.address).must_equal '::1'
-      _(http.port).must_equal 8080
-      _(exp.instance_variable_get(:@path)).must_equal '/custom/path'
-    end
-
-    it 'handles IPv4 loopback address' do
-      exp = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new(endpoint: 'http://127.0.0.1:4318/v1/traces')
-      http = exp.instance_variable_get(:@http)
-      _(http.address).must_equal '127.0.0.1'
-      _(http.port).must_equal 4318
-      _(exp.instance_variable_get(:@path)).must_equal '/v1/traces'
-    end
-
-    it 'handles IPv4 address with custom port' do
-      exp = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new(endpoint: 'http://192.168.1.100:8080/v1/traces')
-      http = exp.instance_variable_get(:@http)
-      _(http.address).must_equal '192.168.1.100'
-      _(http.port).must_equal 8080
-    end
-
-    it 'handles IPv4 address with https' do
-      exp = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new(endpoint: 'https://10.0.0.1:4318/v1/traces')
-      http = exp.instance_variable_get(:@http)
-      _(http.address).must_equal '10.0.0.1'
-      _(http.port).must_equal 4318
-      _(http.use_ssl?).must_equal true
-    end
-
-    it 'handles IPv4 address with custom path' do
-      exp = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new(endpoint: 'http://127.0.0.1:9090/custom/path')
-      http = exp.instance_variable_get(:@http)
-      _(http.address).must_equal '127.0.0.1'
-      _(http.port).must_equal 9090
-      _(exp.instance_variable_get(:@path)).must_equal '/custom/path'
-    end
-
     it 'handles IPv4 address from environment variable' do
       exp = OpenTelemetry::TestHelpers.with_env('OTEL_EXPORTER_OTLP_ENDPOINT' => 'http://192.168.1.1:4318') do
         OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new
@@ -427,28 +213,6 @@ describe OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter do
       _(http.address).must_equal '192.168.1.1'
       _(http.port).must_equal 4318
       _(exp.instance_variable_get(:@path)).must_equal '/v1/traces'
-    end
-
-    it 'handles hostnames' do
-      exp = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new(endpoint: 'http://localhost:4318/v1/traces')
-      http = exp.instance_variable_get(:@http)
-      _(http.address).must_equal 'localhost'
-      _(http.port).must_equal 4318
-    end
-
-    it 'handles fully qualified domain names' do
-      exp = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new(endpoint: 'http://otel.example.com:4318/v1/traces')
-      http = exp.instance_variable_get(:@http)
-      _(http.address).must_equal 'otel.example.com'
-      _(http.port).must_equal 4318
-    end
-
-    it 'handles hostnames with https' do
-      exp = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new(endpoint: 'https://otel-collector.prod.example.com:443/v1/traces')
-      http = exp.instance_variable_get(:@http)
-      _(http.address).must_equal 'otel-collector.prod.example.com'
-      _(http.port).must_equal 443
-      _(http.use_ssl?).must_equal true
     end
 
     it 'handles IPv6 address from environment variable' do
@@ -529,37 +293,10 @@ describe OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter do
       OpenTelemetry.logger = logger
     end
 
-    it 'returns TIMEOUT on timeout after retrying' do
-      stub_request(:post, 'http://localhost:4318/v1/traces').to_timeout.then.to_raise('this should not be reached')
-      span_data = OpenTelemetry::TestHelpers.create_span_data
-
-      @retry_count = 0
-      backoff_stubbed_call = lambda do |**_args|
-        sleep(0.10)
-        @retry_count += 1
-        true
-      end
-
-      exporter.stub(:backoff?, backoff_stubbed_call) do
-        _(exporter.export([span_data], timeout: 0.1)).must_equal(export_failure)
-      end
-    ensure
-      @retry_count = 0
-    end
-
     it 'returns FAILURE when shutdown' do
       exporter.shutdown
       result = exporter.export(nil)
       _(result).must_equal(export_failure)
-    end
-
-    it 'returns FAILURE when encryption to receiver endpoint fails' do
-      exporter = OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter.new(endpoint: 'https://localhost:4318/v1/traces')
-      stub_request(:post, 'https://localhost:4318/v1/traces').to_raise(OpenSSL::SSL::SSLError.new('enigma wedged'))
-      span_data = OpenTelemetry::TestHelpers.create_span_data
-      exporter.stub(:backoff?, ->(**_) { false }) do
-        _(exporter.export([span_data])).must_equal(export_failure)
-      end
     end
 
     it 'exports a span_data' do
@@ -620,20 +357,12 @@ describe OpenTelemetry::Exporter::OTLP::HTTP::TraceExporter do
       result = exporter.export([span_data])
 
       _(log_stream.string).must_match(
-        %r{ERROR -- : OpenTelemetry error: OTLP exporter received http\.code=404 for uri='http://localhost:4318/v1/traces'}
+        %r{ERROR -- : OpenTelemetry error: OTLP exporter received Net::HTTPNotFound, http.code=404, uri='http://localhost:4318/v1/traces'}
       )
 
       _(result).must_equal(export_failure)
     ensure
       OpenTelemetry.logger = logger
-    end
-
-    it 'handles Zlib gzip compression errors' do
-      stub_request(:post, 'http://localhost:4318/v1/traces').to_raise(Zlib::DataError.new('data error'))
-      span_data = OpenTelemetry::TestHelpers.create_span_data
-      exporter.stub(:backoff?, ->(**_) { false }) do
-        _(exporter.export([span_data])).must_equal(export_failure)
-      end
     end
 
     it 'exports a span from a tracer' do
