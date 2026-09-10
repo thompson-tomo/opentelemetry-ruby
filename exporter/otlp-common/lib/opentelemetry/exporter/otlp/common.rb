@@ -21,6 +21,53 @@ module OpenTelemetry
       module Common # rubocop:disable Metrics/ModuleLength
         extend self
 
+        # As encoded etsr (ExportLogsServiceRequest)
+        #
+        # @param [Enumerable<OpenTelemetry::SDK::Trace::SpanData>] log_record_data the
+        #   list of recorded {OpenTelemetry::SDK::Trace::SpanData} structs to be
+        #   encoded.
+        #
+        # @return [String] returns an encoded ELSR of the provided log record data
+        def as_encoded_elsr(log_record_data) # rubocop:disable Metrics/MethodLength, Metrics/CyclomaticComplexity
+          Opentelemetry::Proto::Collector::Logs::V1::ExportLogsServiceRequest.encode(as_elsr(log_record_data))
+        rescue StandardError => e
+          OpenTelemetry.handle_error(exception: e, message: 'unexpected error in OTLP::Common#as_encoded_etsr')
+          nil
+        end
+
+        # As elsr (ExportLogsServiceRequest)
+        #
+        # @param [Enumerable<OpenTelemetry::SDK::Trace::SpanData>] span_data the
+        #   list of recorded {OpenTelemetry::SDK::Trace::SpanData} structs to be
+        #   encoded.
+        #
+        # @return [Opentelemetry::Proto::Collector::Trace::V1::ExportLogsServiceRequest]
+        #   returns an ETSR of the provided span data
+        def as_elsr(log_record_data)
+          Opentelemetry::Proto::Collector::Logs::V1::ExportLogsServiceRequest.new(
+            resource_logs: log_record_data
+                            .group_by(&:resource)
+                            .map do |resource, log_record_datas|
+                              Opentelemetry::Proto::Logs::V1::ResourceLogs.new(
+                                resource: Opentelemetry::Proto::Resource::V1::Resource.new(
+                                  attributes: resource.attribute_enumerator.map { |key, value| as_otlp_key_value(key, value) }
+                                ),
+                                scope_logs: log_record_datas
+                                           .group_by(&:instrumentation_scope)
+                                            .map do |il, lrd|
+                                              Opentelemetry::Proto::Logs::V1::ScopeLogs.new(
+                                                scope: Opentelemetry::Proto::Common::V1::InstrumentationScope.new(
+                                                  name: il.name,
+                                                  version: il.version
+                                                ),
+                                                log_records: lrd.map { |lr| as_otlp_log_record(lr) }
+                                              )
+                                            end
+                              )
+                            end
+          )
+        end
+
         # As encoded etsr (ExportTraceServiceRequest)
         #
         # @param [Enumerable<OpenTelemetry::SDK::Trace::SpanData>] span_data the
@@ -70,6 +117,22 @@ module OpenTelemetry
 
         private
 
+        def as_otlp_log_record(log_record_data)
+          Opentelemetry::Proto::Logs::V1::LogRecord.new(
+            time_unix_nano: log_record_data.timestamp,
+            observed_time_unix_nano: log_record_data.observed_timestamp,
+            severity_number: log_record_data.severity_number,
+            severity_text: log_record_data.severity_text,
+            body: as_otlp_any_value(log_record_data.body),
+            attributes: log_record_data.attributes&.map { |k, v| as_otlp_key_value(k, v) },
+            dropped_attributes_count: log_record_data.total_recorded_attributes - log_record_data.attributes&.size.to_i,
+            event_name: log_record_data.event_name,
+            flags: log_record_data.trace_flags.instance_variable_get(:@flags),
+            trace_id: log_record_data.trace_id,
+            span_id: log_record_data.span_id
+          )
+        end
+        
         def as_otlp_span(span_data) # rubocop:disable Metrics/MethodLength
           Opentelemetry::Proto::Trace::V1::Span.new(
             trace_id: span_data.trace_id,
