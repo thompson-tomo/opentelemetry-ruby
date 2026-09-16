@@ -17,20 +17,20 @@ module OpenTelemetry
           end
 
           def export(log_records, timeout: nil)
-            return FAILURE if @stopped
+            return OpenTelemetry::Logs::ExportStatus::FAILURE if @stopped
 
             Array(log_records).each { |s| pp s }
 
-            SUCCESS
+            OpenTelemetry::Logs::ExportStatus::SUCCESS
           end
 
           def force_flush(timeout: nil)
-            SUCCESS
+            OpenTelemetry::Logs::ExportStatus::SUCCESS
           end
 
           def shutdown(timeout: nil)
             @stopped = true
-            SUCCESS
+            OpenTelemetry::Logs::ExportStatus::SUCCESS
           end
         end
       end

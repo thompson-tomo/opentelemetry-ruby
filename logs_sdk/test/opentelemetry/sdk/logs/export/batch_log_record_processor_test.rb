@@ -8,9 +8,9 @@ require 'test_helper'
 
 describe OpenTelemetry::SDK::Logs::Export::BatchLogRecordProcessor do
   BatchLogRecordProcessor = OpenTelemetry::SDK::Logs::Export::BatchLogRecordProcessor
-  SUCCESS = OpenTelemetry::SDK::Logs::Export::SUCCESS
-  FAILURE = OpenTelemetry::SDK::Logs::Export::FAILURE
-  TIMEOUT = OpenTelemetry::SDK::Logs::Export::TIMEOUT
+  SUCCESS = OpenTelemetry::Logs::ExportStatus::SUCCESS
+  FAILURE = OpenTelemetry::Logs::ExportStatus::FAILURE
+  TIMEOUT = OpenTelemetry::Logs::ExportStatus::TIMEOUT
 
   class TestExporter
     def initialize(status_codes: nil)

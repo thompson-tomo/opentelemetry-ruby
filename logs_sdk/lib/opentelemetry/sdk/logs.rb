@@ -12,8 +12,6 @@ require_relative 'logs/configurator_patch'
 require_relative 'logs/logger'
 require_relative 'logs/logger_provider'
 require_relative 'logs/log_record'
-require_relative 'logs/log_record_data'
-require_relative 'logs/log_record_processor'
 require_relative 'logs/export'
 require_relative 'logs/log_record_limits'
 

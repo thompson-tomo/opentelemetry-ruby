@@ -15,7 +15,7 @@ module OpenTelemetry
         #
         # Typically, the BatchLogRecordProcessor will be more suitable for
         # production environments than the SimpleLogRecordProcessor.
-        class BatchLogRecordProcessor < LogRecordProcessor # rubocop:disable Metrics/ClassLength
+        class BatchLogRecordProcessor < OpenTelemetry::Logs::LogRecordProcessor # rubocop:disable Metrics/ClassLength
           # Returns a new instance of the {BatchLogRecordProcessor}.
           #
           # @param [LogRecordExporter] exporter The (duck type) LogRecordExporter to where the
@@ -103,11 +103,11 @@ module OpenTelemetry
 
             until snapshot.empty?
               remaining_timeout = OpenTelemetry::Common::Utilities.maybe_timeout(timeout, start_time)
-              return TIMEOUT if remaining_timeout&.zero?
+              return OpenTelemetry::Logs::ExportStatus::TIMEOUT if remaining_timeout&.zero?
 
               batch = snapshot.shift(batch_size).map!(&:to_log_record_data)
               result_code = export_batch(batch, timeout: remaining_timeout)
-              return result_code unless result_code == SUCCESS
+              return result_code unless result_code == OpenTelemetry::Logs::ExportStatus::SUCCESS
             end
 
             @exporter.force_flush(timeout: OpenTelemetry::Common::Utilities.maybe_timeout(timeout, start_time))

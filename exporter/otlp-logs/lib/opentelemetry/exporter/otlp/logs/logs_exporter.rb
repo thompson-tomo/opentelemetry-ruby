@@ -6,8 +6,7 @@
 
 require 'opentelemetry/common'
 require 'opentelemetry/sdk'
-require 'opentelemetry-logs-api' # the sdk isn't loading the api, but not sure why
-require 'opentelemetry/sdk/logs'
+require 'opentelemetry-logs-api'
 require 'net/http'
 require 'zlib'
 
@@ -24,8 +23,8 @@ module OpenTelemetry
       module Logs
         # An OpenTelemetry log exporter that sends log records over HTTP as Protobuf encoded OTLP ExportLogsServiceRequests.
         class LogsExporter # rubocop:disable Metrics/ClassLength
-          SUCCESS = OpenTelemetry::SDK::Logs::Export::SUCCESS
-          FAILURE = OpenTelemetry::SDK::Logs::Export::FAILURE
+          SUCCESS = OpenTelemetry::Logs::ExportStatus::SUCCESS
+          FAILURE = OpenTelemetry::Logs::ExportStatus::FAILURE
           private_constant(:SUCCESS, :FAILURE)
 
           # Default timeouts in seconds.
@@ -76,10 +75,10 @@ module OpenTelemetry
             @shutdown = false
           end
 
-          # Called to export sampled {OpenTelemetry::SDK::Logs::LogRecordData} structs.
+          # Called to export sampled {OpenTelemetry::Logs::LogRecordData} structs.
           #
-          # @param [Enumerable<OpenTelemetry::SDK::Logs::LogRecordData>] log_record_data the
-          #   list of recorded {OpenTelemetry::SDK::Logs::LogRecordData} structs to be
+          # @param [Enumerable<OpenTelemetry::Logs::LogRecordData>] log_record_data the
+          #   list of recorded {OpenTelemetry::Logs::LogRecordData} structs to be
           #   exported.
           # @param [optional Numeric] timeout An optional timeout in seconds.
           # @return [Integer] the result of the export.

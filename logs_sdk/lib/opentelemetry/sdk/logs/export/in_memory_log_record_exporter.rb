@@ -67,11 +67,11 @@ module OpenTelemetry
           #   FAILURE
           def export(log_record_datas, timeout: nil)
             @mutex.synchronize do
-              return FAILURE if @stopped
+              return OpenTelemetry::Logs::ExportStatus::FAILURE if @stopped
 
               @emitted_log_records.concat(log_record_datas.to_a)
             end
-            SUCCESS
+            OpenTelemetry::Logs::ExportStatus::SUCCESS
           end
 
           # Called when {LoggerProvider#force_flush} is called, if this exporter is
@@ -81,7 +81,7 @@ module OpenTelemetry
           # @return [Integer] SUCCESS if no error occurred, FAILURE if a
           #   non-specific failure occurred, TIMEOUT if a timeout occurred.
           def force_flush(timeout: nil)
-            SUCCESS
+            OpenTelemetry::Logs::ExportStatus::SUCCESS
           end
 
           # Called when {LoggerProvider#shutdown} is called, if this exporter is
@@ -95,7 +95,7 @@ module OpenTelemetry
               @emitted_log_records.clear
               @stopped = true
             end
-            SUCCESS
+            OpenTelemetry::Logs::ExportStatus::SUCCESS
           end
         end
       end

@@ -30,7 +30,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'opentelemetry-api', '~> 1.1'
   spec.add_dependency 'opentelemetry-common', '~> 0.20'
   spec.add_dependency 'opentelemetry-logs-api', '~> 0.1'
-  spec.add_dependency 'opentelemetry-logs-sdk', '~> 0.1'
   spec.add_dependency 'opentelemetry-sdk'
   spec.add_dependency 'opentelemetry-semantic_conventions'
 

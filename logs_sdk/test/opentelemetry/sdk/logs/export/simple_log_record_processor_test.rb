@@ -7,7 +7,7 @@
 require 'test_helper'
 
 describe OpenTelemetry::SDK::Logs::Export::SimpleLogRecordProcessor do
-  let(:exporter) { OpenTelemetry::SDK::Logs::Export::LogRecordExporter.new }
+  let(:exporter) { OpenTelemetry::Logs::LogRecordExporter.new }
   let(:processor) { OpenTelemetry::SDK::Logs::Export::SimpleLogRecordProcessor.new(exporter) }
   let(:log_record) { OpenTelemetry::SDK::Logs::LogRecord.new }
   let(:mock_context) { Minitest::Mock.new }

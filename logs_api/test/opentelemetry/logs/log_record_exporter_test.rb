@@ -6,22 +6,20 @@
 
 require 'test_helper'
 
-describe OpenTelemetry::SDK::Logs::Export::LogRecordExporter do
-  export = OpenTelemetry::SDK::Logs::Export
-
-  let(:log_record_data1) { OpenTelemetry::SDK::Logs::LogRecordData.new({ name: 'name1' }) }
-  let(:log_record_data2) { OpenTelemetry::SDK::Logs::LogRecordData.new({ name: 'name2' }) }
+describe OpenTelemetry::Logs::LogRecordExporter do
+  let(:log_record_data1) { OpenTelemetry::Logs::LogRecordData.new({ name: 'name1' }) }
+  let(:log_record_data2) { OpenTelemetry::Logs::LogRecordData.new({ name: 'name2' }) }
   let(:log_records)      { [log_record_data1, log_record_data2] }
-  let(:exporter)         { export::LogRecordExporter.new }
+  let(:exporter)         { OpenTelemetry::Logs::LogRecordExporter.new }
 
   it 'accepts an Array of LogRecordData as arg to #export and succeeds' do
-    _(exporter.export(log_records)).must_equal export::SUCCESS
+    _(exporter.export(log_records)).must_equal OpenTelemetry::Logs::ExportStatus::SUCCESS
   end
 
   it 'accepts an Enumerable of LogRecordData as arg to #export and succeeds' do
     enumerable = Struct.new(:log_record0, :log_record1).new(log_records[0], log_records[1])
 
-    _(exporter.export(enumerable)).must_equal export::SUCCESS
+    _(exporter.export(enumerable)).must_equal OpenTelemetry::Logs::ExportStatus::SUCCESS
   end
 
   it 'accepts calls to #shutdown' do
@@ -30,10 +28,10 @@ describe OpenTelemetry::SDK::Logs::Export::LogRecordExporter do
 
   it 'fails to export after shutdown' do
     exporter.shutdown
-    _(exporter.export(log_records)).must_equal export::FAILURE
+    _(exporter.export(log_records)).must_equal OpenTelemetry::Logs::ExportStatus::FAILURE
   end
 
   it 'returns SUCCESS when #force_flush is called' do
-    assert_equal(export::SUCCESS, exporter.force_flush)
+    assert_equal(OpenTelemetry::Logs::ExportStatus::SUCCESS, exporter.force_flush)
   end
 end

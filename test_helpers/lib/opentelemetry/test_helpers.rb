@@ -88,7 +88,7 @@ module OpenTelemetry
                                instrumentation_scope: OpenTelemetry::SDK::InstrumentationScope.new('', 'v0.0.1'),
                                total_recorded_attributes: 0)
       resource ||= OpenTelemetry::SDK::Resources::Resource.telemetry_sdk
-      OpenTelemetry::SDK::Logs::LogRecordData.new(
+      OpenTelemetry::Logs::LogRecordData.new(
         timestamp,
         observed_timestamp,
         severity_text,

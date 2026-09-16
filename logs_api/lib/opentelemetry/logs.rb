@@ -17,6 +17,9 @@ module OpenTelemetry
 end
 
 require 'opentelemetry/logs/log_record'
+require 'opentelemetry/logs/log_record_data'
+require 'opentelemetry/logs/log_record_exporter'
+require 'opentelemetry/logs/log_record_processor'
 require 'opentelemetry/logs/logger'
 require 'opentelemetry/logs/logger_provider'
 require 'opentelemetry/logs/severity_number'

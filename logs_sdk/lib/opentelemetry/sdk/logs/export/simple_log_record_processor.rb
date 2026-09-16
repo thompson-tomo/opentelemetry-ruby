@@ -18,7 +18,7 @@ module OpenTelemetry
         # threads is not desirable as well as scenarios where different custom
         # attributes should be added to individual log records based on code
         # scopes.
-        class SimpleLogRecordProcessor < OpenTelemetry::SDK::Logs::LogRecordProcessor
+        class SimpleLogRecordProcessor < OpenTelemetry::Logs::LogRecordProcessor
           # Returns a new {SimpleLogRecordProcessor} that converts log records
           # to {ReadableLogRecords} and forwards them to the given
           # log_record_exporter.
@@ -65,7 +65,7 @@ module OpenTelemetry
           def force_flush(timeout: nil)
             return if @stopped
 
-            @log_record_exporter&.force_flush(timeout: timeout) || SUCCESS
+            @log_record_exporter&.force_flush(timeout: timeout) || OpenTelemetry::Logs::ExportStatus::SUCCESS
           end
 
           # Called when {LoggerProvider#shutdown} is called.
@@ -77,7 +77,7 @@ module OpenTelemetry
           def shutdown(timeout: nil)
             return if @stopped
 
-            @log_record_exporter&.shutdown(timeout: timeout) || SUCCESS
+            @log_record_exporter&.shutdown(timeout: timeout) || OpenTelemetry::Logs::ExportStatus::SUCCESS
           ensure
             @stopped = true
           end
